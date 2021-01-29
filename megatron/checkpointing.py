@@ -102,9 +102,14 @@ def save_ds_checkpoint(iteration, model, args):
         sd['cuda_rng_state'] = torch.cuda.get_rng_state()
         sd['rng_tracker_states'] = mpu.get_cuda_rng_tracker().get_states()
 
-    #megatron model uses state_dict_for_save_checkpointing instead of the standard state_dict
-    #state_dict is used by deepspeed for module saving so it needs to point to the right function
-    model.module.state_dict = model.module.state_dict_for_save_checkpoint
+    if args.pipe_parallel_size == 0:
+        #megatron model uses state_dict_for_save_checkpointing instead of the standard state_dict
+        #state_dict is used by deepspeed for module saving so it needs to point to the right function
+        model.module.state_dict = model.module.state_dict_for_save_checkpoint
+    else:
+        # Pipeline parallelism manages its own state_dict.
+        pass
+
     model.save_checkpoint(args.save, client_state=sd)
 
 
@@ -200,8 +205,7 @@ def load_checkpoint(model, optimizer, lr_scheduler, load_arg='load'):
         tracker_filename)
 
     if args.deepspeed:
-        checkpoint_name, state_dict = model.load_checkpoint(
-            load_dir, iteration)
+        checkpoint_name, state_dict = model.load_checkpoint(load_dir)
 
         if checkpoint_name is None:
             if mpu.get_data_parallel_rank() == 0:
