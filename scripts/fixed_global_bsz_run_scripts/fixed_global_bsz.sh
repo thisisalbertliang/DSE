@@ -1,6 +1,6 @@
 #! /bin/bash
 
-GPUS_PER_NODE=1
+GPUS_PER_NODE=8
 # Change for multinode config
 NNODES=1
 
@@ -25,7 +25,7 @@ mp_size=1
 # DeepSpeed Pipeline parallelism
 pp_size=1
 # Local batch size
-BATCHSIZE=64
+BATCHSIZE=8
 # Gradient accumulation steps
 GAS=1
 
