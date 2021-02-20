@@ -23,7 +23,7 @@ from megatron.module import MegatronModule
 
 from .language_model import parallel_lm_logits
 from .language_model import get_language_model
-from .utils import init_method_normal
+from .utils import init_method_normal, openai_gelu
 from .utils import scaled_init_method_normal
 
 # Pipeline parallelism

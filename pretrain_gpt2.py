@@ -14,6 +14,7 @@
 # limitations under the License.
 
 """Pretrain GPT2"""
+from argparse import ArgumentParser
 
 import torch
 
@@ -149,8 +150,15 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
 
     return train_ds, valid_ds, test_ds
 
+def extra_args_provider(parser: ArgumentParser):
+    group = parser.add_argument_group(title='DeepSpeed 3D parallelism')
+    group.add_argument('--adaptive-3d-parallelism-interval', type=int, default=-1,
+                       help='Interval between adaptively changing 3d parallelism setting')
+    return parser
+
 
 if __name__ == "__main__":
 
     pretrain(train_valid_test_datasets_provider, model_provider, forward_step,
-             args_defaults={'tokenizer_type': 'GPT2BPETokenizer'})
+             args_defaults={'tokenizer_type': 'GPT2BPETokenizer'},
+             extra_args_provider=extra_args_provider)

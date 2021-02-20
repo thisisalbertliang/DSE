@@ -18,6 +18,8 @@
 from datetime import datetime
 import math
 import sys
+from statistics import mean
+
 import torch
 from torch.nn.parallel.distributed import DistributedDataParallel as torchDDP
 from apex.optimizers import FusedAdam as Adam
@@ -41,6 +43,8 @@ from megatron.utils import make_data_loader
 from megatron.utils import report_memory
 
 import deepspeed
+
+elapsed_time_per_iteration_list = []
 
 
 def pretrain(train_valid_test_dataset_provider, model_provider,
@@ -113,7 +117,7 @@ def pretrain(train_valid_test_dataset_provider, model_provider,
         prefix = 'the end of training for test data'
         evaluate_and_print_results(prefix, forward_step_func,
                                    test_data_iterator, model,
-                                   0, True)
+                                   iteration+1, True)
 
 
 def get_model(model_provider_func):
@@ -435,6 +439,10 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
                                                        args.train_iters)
         log_string += ' elapsed time per iteration (ms): {:.1f} |'.format(
             elapsed_time * 1000.0 / args.log_interval)
+
+        if 20 <= iteration <= 30:
+            elapsed_time_per_iteration_list.append(elapsed_time * 1000.0 / args.log_interval)
+
         log_string += ' learning rate: {:.3E} |'.format(learning_rate)
         num_iterations = max(
             1, args.log_interval - total_loss_dict[skipped_iters_key])
@@ -478,6 +486,20 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
     timers('interval time').start()
     report_memory_flag = True
     while iteration < args.train_iters:
+        # if args.adaptive_3d_parallelism_interval != -1 and iteration % args.adaptive_3d_parallelism_interval == 0:
+        #     save_checkpoint(iteration, model, optimizer, lr_scheduler)
+        #     torch.distributed.barrier()
+        #     time_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        #     rank = torch.distributed.get_rank()
+        #     print_rank_0('rank: {} | time: {} | exiting the program at '
+        #                  'iteration {}'.format(rank, time_str, iteration))
+        #     new_num_mp = 2  # placeholder
+        #     new_num_pp = 2  # placeholder
+        #     f = open("new_mp_pp.txt", "a")
+        #     f.write(f'{new_num_mp}\n{new_num_pp}\n')
+        #     f.close()
+        #     sys.exit(3)
+
         loss_dict, skipped_iter = train_step(forward_step_func,
                                              train_data_iterator,
                                              model,
@@ -520,6 +542,20 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
             print_rank_0('rank: {} | time: {} | exiting the program at '
                          'iteration {}'.format(rank, time_str, iteration))
             sys.exit()
+
+        if torch.distributed.get_rank() == 0 and iteration == 30:
+            data_parallel_size = mpu.get_data_parallel_world_size()
+            global_batch_size = args.batch_size * data_parallel_size * args.gas
+            model_parallel_size = mpu.get_model_parallel_world_size()
+            pipe_parallel_size = mpu.get_pipe_parallel_world_size()
+            f = open(f'/users/sangkeuc/albert/DSE/fixed_global_bsz_runtime_data/global_bsz={global_batch_size}.txt', 'a')
+            f.write(f'until iteration {iteration}: '
+                    f'global_bsz={global_batch_size}_dp={data_parallel_size}_mp={model_parallel_size}_pp={pipe_parallel_size}_gas={args.gas}: '
+                    f'avg_elapsed_time={mean(elapsed_time_per_iteration_list)}\n')
+            f.close()
+            import os, sys
+            os.system('bash pkill_-9_python_for_h0-3.sh')
+
 
     return iteration
 
@@ -617,6 +653,8 @@ def build_train_valid_test_data_iterators(
         # Rank, size, and global batch size.
         data_parallel_size = mpu.get_data_parallel_world_size()
         global_batch_size = args.batch_size * data_parallel_size * args.gas
+
+        assert global_batch_size == 64
 
         # Number of train/valid/test samples.
         train_iters = args.train_iters
