@@ -543,18 +543,18 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
                          'iteration {}'.format(rank, time_str, iteration))
             sys.exit()
 
-        if torch.distributed.get_rank() == 0 and iteration == 30:
-            data_parallel_size = mpu.get_data_parallel_world_size()
-            global_batch_size = args.batch_size * data_parallel_size * args.gas
-            model_parallel_size = mpu.get_model_parallel_world_size()
-            pipe_parallel_size = mpu.get_pipe_parallel_world_size()
-            f = open(f'/users/sangkeuc/albert/DSE/fixed_global_bsz_runtime_data/global_bsz={global_batch_size}.txt', 'a')
-            f.write(f'until iteration {iteration}: '
-                    f'global_bsz={global_batch_size}_dp={data_parallel_size}_mp={model_parallel_size}_pp={pipe_parallel_size}_gas={args.gas}: '
-                    f'avg_elapsed_time={mean(elapsed_time_per_iteration_list)}\n')
-            f.close()
-            import os, sys
-            os.system('bash pkill_-9_python_for_h0-3.sh')
+        # if torch.distributed.get_rank() == 0 and iteration == 30:
+        #     data_parallel_size = mpu.get_data_parallel_world_size()
+        #     global_batch_size = args.batch_size * data_parallel_size * args.gas
+        #     model_parallel_size = mpu.get_model_parallel_world_size()
+        #     pipe_parallel_size = mpu.get_pipe_parallel_world_size()
+        #     f = open(f'/users/sangkeuc/albert/DSE/fixed_global_bsz_runtime_data/global_bsz={global_batch_size}.txt', 'a')
+        #     f.write(f'until iteration {iteration}: '
+        #             f'global_bsz={global_batch_size}_dp={data_parallel_size}_mp={model_parallel_size}_pp={pipe_parallel_size}_gas={args.gas}: '
+        #             f'avg_elapsed_time={mean(elapsed_time_per_iteration_list)}\n')
+        #     f.close()
+        #     import os, sys
+        #     os.system('bash pkill_-9_python_for_h0-3.sh')
 
 
     return iteration
@@ -654,7 +654,7 @@ def build_train_valid_test_data_iterators(
         data_parallel_size = mpu.get_data_parallel_world_size()
         global_batch_size = args.batch_size * data_parallel_size * args.gas
 
-        assert global_batch_size == 64
+        # assert global_batch_size == 64
 
         # Number of train/valid/test samples.
         train_iters = args.train_iters

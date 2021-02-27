@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dse-experiments
+  labels:
+    app: dse-experiments
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dse-experiments
+  template:
+    metadata:
+      labels:
+        app: dse-experiments
+    spec:
+      containers:
+        - name: dse-experiments
+          image: ajliang/dse-experiments
+          ports:
+            - containerPort: 6000
+          resources:
+            limits:
+              nvidia.com/gpu: 4 # requesting 4 GPU
+      nodeSelector:
+        nodetype: phoquad

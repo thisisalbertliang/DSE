@@ -124,7 +124,9 @@ def _initialize_distributed():
     args = get_args()
 
     device_count = torch.cuda.device_count()
-    if torch.distributed.is_initialized():
+    if args.deepspeed:
+        deepspeed.init_distributed(dist_backend=args.distributed_backend)
+    elif torch.distributed.is_initialized():
 
         if args.rank == 0:
             print('torch distributed is already initialized, '
@@ -150,10 +152,15 @@ def _initialize_distributed():
         master_ip = os.getenv('MASTER_ADDR', 'localhost')
         master_port = os.getenv('MASTER_PORT', '6000')
         init_method += master_ip + ':' + master_port
+
+        print('ALBERT DEBUG: torch.distributed.init_process_group start')
+
         torch.distributed.init_process_group(
             backend=args.distributed_backend,
             world_size=args.world_size, rank=args.rank,
             init_method=init_method)
+
+        print('ALBERT DEBUG: torch.distributed.init_process_group end')
 
     # Setup 3D topology.
     if args.pipe_parallel_size > 0:
